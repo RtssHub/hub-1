@@ -1,0 +1,170 @@
+-- Tsuo Hub style AutoFarm Pro - Blox Fruits completo
+-- Criado para executores Delta, Fluxus, KRNL etc.
+
+-- Carregar Rayfield GUI
+local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "Tsuo Hub | AutoFarm Pro",
+    LoadingTitle = "Carregando...",
+    LoadingSubtitle = "por polar",
+    ConfigurationSaving = {
+        Enabled = true,
+        FolderName = "TsuoHubBlox",
+        FileName = "AutoFarmConfig"
+    },
+    KeySystem = false
+})
+
+-- Lista de NPCs do 1st Sea e suas quests
+local npcList = {
+    ["Bandit"] = {"BanditQuest1", "Bandit"},
+    ["Monkey"] = {"JungleQuest", "Monkey"},
+    ["Gorilla"] = {"JungleQuest", "Gorilla"},
+    ["Pirate"] = {"BuggyQuest1", "Pirate"},
+    ["Brute"] = {"BuggyQuest1", "Brute"},
+    ["Desert Bandit"] = {"DesertQuest", "Desert Bandit"},
+    ["Desert Officer"] = {"DesertQuest", "Desert Officer"},
+    ["Snow Bandit"] = {"SnowQuest", "Snow Bandit"},
+    ["Snowman"] = {"SnowQuest", "Snowman"},
+    ["Chief Petty Officer"] = {"MarineQuest2", "Chief Petty Officer"},
+    ["Sky Bandit"] = {"SkyQuest", "Sky Bandit"},
+    ["Dark Master"] = {"SkyQuest", "Dark Master"},
+    ["Prisoner"] = {"PrisonerQuest", "Prisoner"},
+    ["Dangerous Prisoner"] = {"PrisonerQuest", "Dangerous Prisoner"},
+    ["Toga Warrior"] = {"ColosseumQuest", "Toga Warrior"},
+    ["Gladiator"] = {"ColosseumQuest", "Gladiator"},
+    ["Galley Pirate"] = {"FountainQuest", "Galley Pirate"},
+    ["Galley Captain"] = {"FountainQuest", "Galley Captain"},
+    -- Missões especiais
+    ["Saber Expert"] = {"SaberQuest", "Saber Expert"},
+    ["Shanks"] = {"ShanksQuest", "Shanks"},
+    ["Elite Hunter"] = {"EliteQuest", "Elite Hunter"}
+}
+
+local selectedMob = "Bandit"
+getgenv().AutoFarm = false
+getgenv().AutoBoss = false
+getgenv().AutoSeaEvents = false
+getgenv().AutoStoreFruit = false
+
+-- Funções básicas
+
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local Workspace = game:GetService("Workspace")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+
+-- Função para iniciar quest
+function StartQuest()
+    local questData = npcList[selectedMob]
+    if not questData then return end
+    local args = {
+        [1] = "StartQuest",
+        [2] = questData[1],
+        [3] = 1
+    }
+    pcall(function()
+        ReplicatedStorage.Remotes.CommF_:InvokeServer(unpack(args))
+    end)
+end
+
+-- Função para pegar inimigo mais próximo do tipo selecionado
+function GetClosestMob()
+    local dist = math.huge
+    local closest = nil
+    for _, mob in pairs(Workspace.Enemies:GetChildren()) do
+        if mob.Name == npcList[selectedMob][2] and mob:FindFirstChild("HumanoidRootPart") and mob:FindFirstChild("Humanoid") and mob.Humanoid.Health > 0 then
+            local mag = (mob.HumanoidRootPart.Position - LocalPlayer.Character.HumanoidRootPart.Position).Magnitude
+            if mag < dist then
+                closest = mob
+                dist = mag
+            end
+        end
+    end
+    return closest
+end
+
+-- Função de ataque simples (clique)
+function Attack()
+    VirtualInputManager:SendMouseButtonEvent(0,0,0,true,game,1)
+    task.wait(0.1)
+    VirtualInputManager:SendMouseButtonEvent(0,0,0,false,game,1)
+end
+
+-- Função de teleporte
+function TeleportTo(cframe)
+    if LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart") then
+        LocalPlayer.Character.HumanoidRootPart.CFrame = cframe
+    end
+end
+
+-- Loop principal do AutoFarm
+coroutine.wrap(function()
+    while true do
+        task.wait(0.1)
+        if getgenv().AutoFarm then
+            pcall(function()
+                StartQuest()
+                local mob = GetClosestMob()
+                if mob then
+                    while mob and mob.Humanoid.Health > 0 and getgenv().AutoFarm do
+                        TeleportTo(mob.HumanoidRootPart.CFrame * CFrame.new(0,15,0))
+                        Attack()
+                        task.wait(0.2)
+                    end
+                else
+                    StartQuest()
+                    task.wait(2)
+                end
+            end)
+        else
+            task.wait(1)
+        end
+    end
+end)()
+
+-- GUI Setup
+
+local tabFarm = Window:CreateTab("AutoFarm", 4483362458)
+local tabBoss = Window:CreateTab("AutoBoss", 4483362458)
+local tabEvents = Window:CreateTab("Sea Events", 4483362458)
+local tabUtil = Window:CreateTab("Utilitários", 4483362458)
+
+-- AutoFarm Tab
+
+tabFarm:CreateDropdown({
+    Name = "Selecionar Mob (1st Sea)",
+    Options = (function()
+        local keys = {}
+        for k,_ in pairs(npcList) do table.insert(keys, k) end
+        return keys
+    end)(),
+    CurrentOption = selectedMob,
+    Callback = function(value)
+        selectedMob = value
+        Rayfield:Notify({
+            Title = "NPC Selecionado",
+            Content = value,
+            Duration = 3
+        })
+    end
+})
+
+tabFarm:CreateToggle({
+    Name = "Ativar AutoFarm",
+    CurrentValue = false,
+    Flag = "AutoFarmToggle",
+    Callback = function(state)
+        getgenv().AutoFarm = state
+        Rayfield:Notify({
+            Title = "AutoFarm",
+            Content = (state and "Ativado" or "Desativado"),
+            Duration = 3
+        })
+    end
+})
+
+-- Aqui você pode adicionar outras abas e funcionalidades (AutoBoss, Sea Events, AutoStoreFruit, Bypass, etc)
+
